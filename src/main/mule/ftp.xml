@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<ftp:config name="FTP_Config" doc:name="FTP Config" doc:id="23d28e61-ccaa-4873-8cf2-b7aaf3e5cd62" path="customer_table.csv" config-ref="FTP_Config" targetValue="#[payload]" lock="false">
+		<ftp:connection workingDir="/" host="localhost" username="anonymous" password="ftp@example.com" />
+	</ftp:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="c8d9b446-5775-4e15-89f5-b9b7d0de4e45" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Yogi1234@$" database="employee" />
+	</db:config>
+	<flow name="ftpFlow" doc:id="75c03844-cee7-4c1d-b811-82537d473899" >
+		<scheduler doc:name="Scheduler" doc:id="802359e3-d6c1-4090-ac68-fa78e3d5feb7" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="2" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="6fedf62c-b017-4548-8651-b133f0661eba" message="ftpFlow started"/>
+		<ftp:read doc:name="Read customer_table CSV file from FTP Server" doc:id="23d28e61-ccaa-4873-8cf2-b7aaf3e5cd62" config-ref="FTP_Config" path="customer_table.csv"/>
+		<ee:transform doc:name="csv to json" doc:id="d87b9488-2933-4e81-a083-8c0b7228f0da">
+			<ee:message>
+				<ee:set-payload><![CDATA[
+%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="f43ba61a-6b2a-4727-87bc-1a09c72db975" />
+		<db:bulk-insert doc:name="Bulk insert" doc:id="10adb638-6128-4e6a-ba02-4d69677b406a" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO customer_table
+
+VALUES
+(:customer_id, :customer_name, :email, :phone, :city, :status);]]></db:sql>
+		</db:bulk-insert>
+		<logger level="INFO" doc:name="Logger" doc:id="e1a5a23e-d3f3-45a8-968e-aa6a1783694a" />
+	</flow>
+</mule>
